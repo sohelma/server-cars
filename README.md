@@ -15,7 +15,7 @@ This repository contains the backend of RentWheels – a car rental platform bui
 - Node.js
 - Express.js
 - MongoDB (Atlas)
-- Firebase Authentication (optional)
+- Firebase Authentication
 - Cors, dotenv, nodemon
 
 ## API Endpoints
@@ -26,11 +26,4 @@ This repository contains the backend of RentWheels – a car rental platform bui
 - `DELETE /cars/:id` – Delete a car (Private)
 - `GET /bookings` – Fetch all bookings
 - `POST /bookings` – Book a car
-
-## Setup Instructions
-
-1. Clone the repo:
-
-```bash
-git clone https://github.com/<your-username>/server-cars.git
 

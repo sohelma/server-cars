@@ -10,10 +10,10 @@ const port = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use("/images", express.static("public/images"));// Serve static images from public/images
+app.use("/images", express.static("public/images")); // Serve static images
 
 // MongoDB connection
-const uri = process.env.MONGODB_URI; // .env ফাইলে রাখবে
+const uri = process.env.MONGODB_URI;
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -22,28 +22,56 @@ const client = new MongoClient(uri, {
   },
 });
 
+// Root
+    app.get("/", (req, res) => {
+      res.send("Server running on port " + port);
+    });
+    
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
     console.log("MongoDB connected successfully!");
 
     const db = client.db("rentwheels-db");
     const carsCollection = db.collection("cars");
     const bookingsCollection = db.collection("bookings");
 
-    // Root route
-    app.get("/", (req, res) => {
-      res.send("Server running on port " + port);
-    });
+    
 
     // Get all cars
     app.get("/cars", async (req, res) => {
       try {
-        const result = await carsCollection.find().toArray();
-        res.send(result);
+        const cars = await carsCollection.find().toArray();
+        res.send(cars);
       } catch (err) {
         console.error(err);
         res.status(500).send({ message: "Failed to fetch cars" });
+      }
+    });
+
+    // Get Featured Cars (latest 6)
+    app.get("/cars/featured", async (req, res) => {
+      try {
+        const cars = await carsCollection.find().sort({ _id: -1 }).limit(30).toArray();
+        res.send(cars);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Failed to fetch featured cars" });
+      }
+    });
+
+    // Get Top Rated Cars (rating >= 4.5)
+    app.get("/cars/top-rated", async (req, res) => {
+      try {
+        const cars = await carsCollection
+          .find({ rating: { $gte: 4.5 } })
+          .sort({ rating: -1 })
+          .limit(6)
+          .toArray();
+        res.send(cars);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Failed to fetch top rated cars" });
       }
     });
 
@@ -51,9 +79,9 @@ async function run() {
     app.get("/cars/:id", async (req, res) => {
       try {
         const id = req.params.id;
-        const result = await carsCollection.findOne({ _id: new ObjectId(id) });
-        if (!result) return res.status(404).send({ message: "Car not found" });
-        res.send(result);
+        const car = await carsCollection.findOne({ _id: new ObjectId(id) });
+        if (!car) return res.status(404).send({ message: "Car not found" });
+        res.send(car);
       } catch (err) {
         console.error(err);
         res.status(500).send({ message: "Invalid ID or server error" });
@@ -77,9 +105,10 @@ async function run() {
       try {
         const id = req.params.id;
         const updatedData = req.body;
-        const filter = { _id: new ObjectId(id) };
-        const updateDoc = { $set: updatedData };
-        const result = await carsCollection.updateOne(filter, updateDoc);
+        const result = await carsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedData }
+        );
         res.send(result);
       } catch (err) {
         console.error(err);
@@ -99,14 +128,14 @@ async function run() {
       }
     });
 
-    // Get all bookings (optional email filter)
+    // Get bookings (optional email filter)
     app.get("/bookings", async (req, res) => {
       try {
         const email = req.query.email;
         let query = {};
         if (email) query = { userEmail: email };
-        const result = await bookingsCollection.find(query).toArray();
-        res.send(result);
+        const bookings = await bookingsCollection.find(query).toArray();
+        res.send(bookings);
       } catch (err) {
         console.error(err);
         res.status(500).send({ message: "Failed to fetch bookings" });
@@ -118,7 +147,7 @@ async function run() {
       try {
         const newBooking = req.body;
 
-        // Optional: update car status to "booked"
+        // Update car status to booked
         const carId = newBooking.carId;
         await carsCollection.updateOne(
           { _id: new ObjectId(carId) },
@@ -133,6 +162,19 @@ async function run() {
       }
     });
 
+
+    // My Listings 
+app.get("/my-cars/:email", async (req, res) => {
+  try {
+    const email = req.params.email;
+    const cars = await carsCollection.find({ providerEmail: email }).toArray();
+    res.send(cars);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ message: "Faild to fetch car" });
+  }
+});
+
   } finally {
     // keep connection open for development
   }
@@ -140,7 +182,6 @@ async function run() {
 
 run().catch(console.dir);
 
-// Start server
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
